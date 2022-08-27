@@ -1,6 +1,6 @@
 /*
  * Autor: Ramon Barbosa
- * Maratona: Maratona de Programação da SBC 2004
+ * Maratona: Maratona de Programação da SBC 2019
  * Problema: B
  * Link: https://www.beecrowd.com.br/judge/pt/problems/view/2963
  */
