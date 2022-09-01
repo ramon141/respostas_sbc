@@ -4,6 +4,14 @@ import java.util.Scanner;
 
 public class Main {
 
+    int ii = 0, ciclos;
+    ArrayList<Cidade> cidades;
+    ArrayList<Rua> ruas;
+
+    public void addII(int value) {
+        ii += value;
+    }
+
     class Rua {
         Cidade c1, c2;
         int tamanho;
@@ -42,103 +50,161 @@ public class Main {
         }
     }
 
-    class CidadeIndice implements Comparator<Cidade> {
-        @Override
-        public int compare(Cidade a, Cidade b) {
-            return a.idx - b.idx;
-        }
-    }
-
-    public int fatorialDeSoma(int i) {
+    public int fatorialDeSoma(int i, int prefx) {
         int soma = i;
         while (i-- > 0)
-            soma += i;
+            soma += (i + prefx);
 
         return soma;
     }
 
-    public void calcularInatividade(int ciclos, Rua rua, ArrayList<Cidade> cidades, Cidade origem, Cidade destino) {
+    public void calcularInatividade(Rua rua, Cidade origem, Cidade destino) {
+        // Se a rua tiver tamanho 1 é simples, todas as demais cidades
+        // ganham +1 de inatividade, e a cidade destino fica com 0
         if (rua.tamanho == 1) {
-            origem.iic++;
+            int tempoParaChegar = 0;
+
+            for (int i = 0; i < cidades.size(); i++) {
+                if (cidades.get(i).idx != destino.idx) {
+                    cidades.get(i).iic++;
+                    tempoParaChegar += cidades.get(i).iic;
+                }
+            }
+
+            destino.iic = 0;
+            ciclos -= rua.tamanho;
+
+            // Quando o tamanho da rua é 1, entao basta adicionar 1 para corresponder a
+            // todas as cidades e o -1 serve para eliminar o ii do destino
+            addII(tempoParaChegar);
 
         } else {
-            int tempoParaChegar = fatorialDeSoma(rua.tamanho);
-            for (int i = 0; i <= ciclos; i++) {
-                cidades.get(i).iic += tempoParaChegar;
+            // Caso o caminho não tenha somente 1km, temos que apelar
+            // para o trecho:
+            // "Assumindo que um patruleiro viaja um quilômetro em uma
+            // unidade de tempo (uma simulação de ciclo) e que o tempo
+            // para visitar a cidade é neglicenciável (igual a zero)"
+
+            // Ou seja, imaginamos que o caminho entre a cidade A e B,
+            // seja 2km, e só haja essas duas cidades (input: 2 1 1 1 1 2 2)
+
+            // 1º Ciclo - Anda 1km
+            // A<-------웃-------->B
+            // IIC A = 1 ciclo
+            // IIC B = 1 ciclo
+            // IIE = 2
+            // II = 2
+            // Isto ocorre porque a após o primeiro ciclo o 웃 não está
+            // em nenhuma cidade, então o ICC deve ser incrementado em cada
+            // cidade
+
+            // 2º Ciclo - Anda mais 1km
+            // A<---------------->웃B
+            // IIC A = 2 ciclo
+            // IIC B = 0 ciclo
+            // IIE = 2
+            // II = 2 + 2 = 4
+
+            // Agora ele chegou a cidade destino, e a II da cidade B é zerada
+
+            // Podemos perceber que há dois casos:
+            // 1º - Que o tamanho da rua é menor ou igual a quantidade de ciclos restantes
+            // (consegue atravessar)
+            // 2º - Nao consegue atravessar a cidade, mas ainda sim o icc deve ser calculado
+
+            // Vamos inicialmente considerar o primeiro caso
+            if (/* primeiro caso */ rua.tamanho <= ciclos) {
+                // Esta variável guardará o IIE dos "rua.tamanho" ciclos que ocorrerem
+                int tempoParaChegar = 0;
+
+                // Quando todos o ciclo terminar o ii do reino será a soma das inatividades a
+                // cada ciclo
+                // Para todo A != destino
+                // 1º Ciclo - Inatividade Cidade A = Y + X
+                // 2º Ciclo - Inatividade Cidade A = Y + X + 1
+                // 3º Ciclo - Inatividade Cidade A = Y + X + 2
+                // .........
+                // Tº Ciclo - Inatividade Cidade A = Y + X + T, considere X = tamanho da rua
+                // II = (x + x+2 + ... + x+C)
+                // O Y é a inatividade anterior da cidade, aqui nomeada como
+                // "cidades.get(i).iic"
+                for (int i = 0; i < cidades.size(); i++) {
+                    if (cidades.get(i).idx != destino.idx) {
+                        tempoParaChegar += fatorialDeSoma(rua.tamanho, cidades.get(i).iic);
+                        cidades.get(i).iic += rua.tamanho;
+
+                    } else {
+                        // Se for a cidade destino, então o último ciclo não irá "contar", pois neste o
+                        // usuário já chegou na cidade, e a inatividade é zerada
+                        tempoParaChegar += fatorialDeSoma(rua.tamanho - 1, cidades.get(i).iic);
+                    }
+                }
+
+                // O destino é zerado, pois o cidadão chegou na cidade
+                destino.iic = 0;
+
+                // Agora que eu já calcurei o iic, basta eu adicioná-lo
+                addII(tempoParaChegar);
+
+                // A quantidade de ciclos "usadas" é equivalente ao tamanho da rua
+                ciclos -= rua.tamanho;
+            } else {
+                /*
+                 * 2º Caso: Nao consegue atravessar a cidade, mas ainda sim o icc deve ser
+                 * calculado
+                 */
+
+                // Para calcular o icc para toda cidade, basta utilizar a mesma lógica anterior
+                // 1º Ciclo - Inatividade Cidade A = Y + X
+                // .........
+                // Tº Ciclo - Inatividade Cidade A = Y + X + T, considere X = a quantidade de
+                // ciclos, pois não há ciclos suficientes para conseguir completar o caminho
+                int tempoParaChegar = 0;
+                for (int i = 0; i < cidades.size(); i++) {
+                    tempoParaChegar += fatorialDeSoma(ciclos, cidades.get(i).iic);
+                    cidades.get(i).iic += ciclos;
+                }
+
+                destino.iic = 0;
+                addII(tempoParaChegar);
+                ciclos = 0;
             }
-            destino.iic -= rua.tamanho;
         }
     }
 
-    public ArrayList<Object> aplicarCiclo(ArrayList<Cidade> cidades, ArrayList<Rua> ruas, Cidade cAtual, int ciclos) {
-        int inatividadeImperio = 0;
-        ArrayList<Object> retorno = new ArrayList<Object>();
-
-        // Escolher cidade
+    public Cidade choiceCity(Cidade currentCity) {
         ArrayList<Cidade> cidadesVizinha = new ArrayList<>();
-        // System.out.println("--------------");
-        // System.out.println(cAtual);
-        // System.out.println("---------------");
-        for (int i = 0; i < cAtual.size(); i++) {
-            if (cAtual.get(i).c1.idx == cAtual.idx) {
-                if (cAtual.get(i).c2.idx != cAtual.idx) {
-                    cidadesVizinha.add(cAtual.get(i).c2);
-                }
-            } else {
-                cidadesVizinha.add(cAtual.get(i).c1);
-            }
-        }
-        // System.out.println("----------------");
-        // cidadesVizinha.sort(null);
 
-        // System.out.println("Cidades vizinhas: " + cidadesVizinha);
-
-        Cidade cidadeEscolhida = cidadesVizinha.get(0);
-        Rua rua = null;
-        for (int i = 0; i < cidadeEscolhida.size(); i++) {
-            if (cidadeEscolhida.get(i).c1.idx == cAtual.idx || cidadeEscolhida.get(i).c2.idx == cAtual.idx) {
-                rua = cidadeEscolhida.get(i);
-                break;
-            }
+        for (Rua rua : currentCity) {
+            Cidade outraCidade = rua.c1.idx == currentCity.idx ? rua.c2 : rua.c1;
+            cidadesVizinha.add(outraCidade);
         }
 
-        cidadesVizinha.get(0).iic = 0;
+        // Ordena por inatividade, se forem iguais ele considera o index
+        cidadesVizinha.sort(null);
+        return cidadesVizinha.get(0);
+    }
 
-        // Um cara anda 1km por ciclo
-        // se ele nao conseguir completar o caminho dessa viagem
-        if (rua.tamanho > ciclos) {
-            // os dias vao passando para cada cidade
-            inatividadeImperio = 0;
-            for (int i = 1; i <= ciclos; i++) {
-                inatividadeImperio += (cidades.size() * i);
-            }
+    public Rua choiceWalk(Cidade a, Cidade b) {
+        for (Rua rua : ruas) {
+            if (rua.c1.idx == a.idx && rua.c2.idx == b.idx)
+                return rua;
 
-            retorno.add(cidades);
-            retorno.add(inatividadeImperio);
-            retorno.add(cidadeEscolhida);
-            retorno.add(inatividadeImperio);
-            retorno.add(true);
-
-            return retorno;
-        } else {
-            System.out.println("cai noutro lugar");
+            if (rua.c2.idx == a.idx && rua.c1.idx == b.idx)
+                return rua;
         }
 
-        calcularInatividade(ciclos, rua, cidades, cidadeEscolhida, cidadesVizinha.get(0));
+        return null;
+    }
 
-        for (int i = 0; i < cidades.size(); i++) {
-            inatividadeImperio += cidades.get(i).iic;
+    public void aplicarCiclo(Cidade currentCity) {
+        // Vai aplicando os ciclos enquanto ele for superior a 0
+        if (ciclos > 0) {
+            Cidade nextCity = choiceCity(currentCity);
+            Rua rua = choiceWalk(currentCity, nextCity);
+            calcularInatividade(rua, currentCity, nextCity);
+            aplicarCiclo(nextCity);
         }
-
-        cidades.sort(new CidadeIndice());
-
-        retorno.add(cidades);
-        retorno.add(inatividadeImperio);
-        retorno.add(cidadeEscolhida);
-        retorno.add(ciclos - rua.tamanho);
-        retorno.add(false);
-
-        return retorno;
     }
 
     public Main() {
@@ -146,16 +212,22 @@ public class Main {
         Scanner tec = new Scanner(System.in);
 
         while (true) {
+            ii = 0;
+            if (cidades != null)
+                cidades.clear();
+            if (ruas != null)
+                ruas.clear();
+
             int c = tec.nextInt();
             int r = tec.nextInt();
-            int ciclos = tec.nextInt();
+            ciclos = tec.nextInt();
             int cInicial = tec.nextInt();
 
             if (c == 0 && r == 0 && ciclos == 0)
                 break;
 
-            ArrayList<Rua> ruas = new ArrayList<Rua>();
-            ArrayList<Cidade> cidades = new ArrayList<Cidade>(c);
+            ruas = new ArrayList<Rua>();
+            cidades = new ArrayList<Cidade>(c);
 
             for (int i = 0; i < c; i++) {
                 cidades.add(new Cidade(i));
@@ -172,36 +244,8 @@ public class Main {
                 ruas.add(rua);
             }
 
-            ArrayList<Object> result = new ArrayList<Object>();
-            result.add(cidades);
-            result.add(0);
-            result.add(cidades.get(cInicial - 1));
-            result.add(ciclos);
-
-            int ii = 0;
-
-            for (int i = 0; i < ciclos; i++) {
-                System.out.println("\n-----Depois Ciclo " + (i + 1) + "-----");
-                result = aplicarCiclo(
-                        ((ArrayList<Cidade>) result.get(0)),
-                        ruas,
-                        ((Cidade) result.get(2)),
-                        ((int) result.get(3)));
-
-                ii += ((int) result.get(1));
-
-                if ((boolean) result.get(4)) {
-                    System.out.println("-->" + ii);
-                    break;
-                }
-
-                System.out.println(result.get(0));
-                System.out.println("iee = " + result.get(1));
-                System.out.println(result.get(2));
-                System.out.println("ii = " + ii);
-                System.out.println("Restam " + (result.get(3)) + "ciclos");
-                System.out.println("\n-------------------------\n");
-            }
+            aplicarCiclo(cidades.get(cInicial - 1));
+            System.out.println(ii);
         }
     }
 
